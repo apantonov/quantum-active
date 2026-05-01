@@ -7,7 +7,7 @@ filename = "output"
 
 tmax = 400.0
 nb_trajs = 100
-dt = 0.01
+dt = 0.001
 nk = 10			  # nk steps per interval dt
 N = 24			   # dimension of matrices
 
@@ -15,7 +15,7 @@ tau = 10.0
 D = 0.01
 
 # Gain/loss rates; for the non-dissipative von Neumann equation, both are set to zero
-nu_gain = 1e-8
+nu_gain = 1e-4
 nu_loss = 1e-2
 
 nb_tsteps = int(tmax / dt)
@@ -62,6 +62,14 @@ for k in range(nb_trajs):
 erwx = np.zeros((len(tlist), nb_trajs), dtype=np.complex128)
 erwx2 = np.zeros((len(tlist), nb_trajs), dtype=np.complex128)
 
+# =========================
+# Additional parameters
+# =========================
+spur = np.zeros((len(tlist), nb_trajs), dtype=np.complex128)
+purity = np.zeros((len(tlist), nb_trajs), dtype=np.complex128)
+eigmin = np.zeros((len(tlist), nb_trajs), dtype=np.complex128)
+
+
 x02 = np.trace(x @ x @ rho0).real
 Id = np.eye(N)
 
@@ -71,6 +79,10 @@ for m in range(nb_trajs):
 	for l in range(len(tlist)):
 		erwx[l, m] = np.trace(x @ rho)
 		erwx2[l, m] = np.trace(x @ x @ rho)
+		# Tracking of additional parameters
+		spur[l, m] = np.abs(np.trace(rho) - 1.0)
+		purity[l, m] = np.trace(rho @ rho)
+		eigmin[l, m] = np.min(np.linalg.eigvals(rho))
 
 		for k in range(nk):
 			idx = l * nk + k
@@ -163,6 +175,11 @@ for m in range(nb_trajs):
 # =========================
 MSD = np.mean(erwx2.real - x02, axis=1)
 xav = np.mean(erwx.real, axis=1)
+# Outputting additional parameteres
+eigmin = np.min(eigmin.real, axis=1)
+purity = np.mean(purity.real, axis=1)
+spurvar = np.var(spur.real, axis=1)
+spur = np.mean(spur.real, axis=1)
 
-data = np.column_stack((tlist, MSD))
+data = np.column_stack((tlist, MSD, xav, spurvar, spur, purity, eigmin))
 np.savetxt(f"MSD_{filename}.txt", data)
